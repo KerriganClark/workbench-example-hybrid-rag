@@ -1,25 +1,32 @@
-# Create your compose file. To learn more, please visit
-# https://docs.docker.com/reference/compose-file/
+version: "3.8"
+
 services:
-  local-nim:
-    image: nvcr.io/nim/meta/llama-3.1-8b-instruct:latest
-    runtime: nvidia
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: 1
-              capabilities: [ gpu ]
+  kaleegpt:
+    # build your FastAPI + static UI app
+    build:
+      context: .
+      dockerfile: Dockerfile
     ports:
-      - "8000:8000"
+      - "8080:8080"
     volumes:
-      - type: bind
-        source: /tmp
-        target: /opt/nim/.cache/
+      - .:/app
+    depends_on:
+      - rag-backend
     environment:
-      - NGC_API_KEY=${NVIDIA_API_KEY:?Error NVIDIA_API_KEY not set}
-      
+      - RAG_ENDPOINT=http://rag-backend:5000/api/query
+
+  rag-backend:
+    # stub RAG service—swap in your actual RAG image or build context
+    build:
+      context: ./rag-backend
+      dockerfile: Dockerfile
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./rag-backend:/app
+    environment:
+      - VECTOR_DB_PATH=/data/index.db
+
 networks:
   default:
-    name: hybrid-rag
+    name: kaleegpt-net
